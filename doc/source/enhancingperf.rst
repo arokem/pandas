@@ -292,14 +292,13 @@ Read more in the `cython docs <http://docs.cython.org/>`__.
 
 .. _enhancingperf.eval:
 
-.. versionadded:: 0.13
-
 Expression Evaluation via :func:`~pandas.eval`
 ----------------------------------------------
 
-New in pandas v0.13 a top-level function :func:`~pandas.eval` implements
-expression evaluation of expressions containing :class:`~pandas.Series` and
-:class:`~pandas.DataFrame` objects.
+.. versionadded:: 0.13
+
+The top-level function :func:`~pandas.eval` implements expression evaluation of
+:class:`~pandas.Series` and :class:`~pandas.DataFrame` objects.
 
 .. note::
 
@@ -307,11 +306,11 @@ expression evaluation of expressions containing :class:`~pandas.Series` and
    install ``numexpr``. See the :ref:`recommended dependencies section
    <install.recommended_dependencies>` for more details.
 
-The major benefit of using :func:`~pandas.eval` for expression evaluation
-rather than just straight-up Python is two-fold: large
-:class:`~pandas.DataFrame` objects are evaluated more efficiently and large
-expressions are evaluated all at once by the underlying engine (by default
-``numexpr`` is used for evaluation).
+The point of using :func:`~pandas.eval` for expression evaluation rather than
+plain Python is two-fold: 1) large :class:`~pandas.DataFrame` objects are
+evaluated more efficiently and 2) large arithmetic and boolean expressions are
+evaluated all at once by the underlying engine (by default ``numexpr`` is used
+for evaluation).
 
 .. note::
 
@@ -323,11 +322,8 @@ expressions are evaluated all at once by the underlying engine (by default
    :class:`~pandas.core.frame.DataFrame` with more than 10,000 rows.
 
 
-:func:`~pandas.eval` supports all arithmetic expressions
-supported by the engine. The ``numexpr`` engine uses ``numexpr`` under the hood
-to evaluate expressions efficiently, while allowing a slightly modified--and we
-think more intuitive--syntax for expressions.
-
+:func:`~pandas.eval` supports all arithmetic expressions supported by the
+engine in addition to some extensions available only in pandas.
 
 .. note::
 
@@ -338,8 +334,7 @@ think more intuitive--syntax for expressions.
 :func:`~pandas.eval` Examples
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-:func:`~pandas.eval` works wonders for expressions containing
-large arrays
+:func:`~pandas.eval` works wonders for expressions containing large arrays
 
 First let's create 4 decent-sized arrays to play with:
 
@@ -377,7 +372,7 @@ Now let's do the same thing but with comparisons:
    %timeit pd.eval('(df1 > 0) & (df2 > 0) & (df3 > 0) & (df4 > 0)')
 
 
-:func:`~pandas.eval` also works with "unaligned" pandas objects:
+:func:`~pandas.eval` also works with unaligned pandas objects:
 
 
 .. ipython:: python
@@ -389,13 +384,77 @@ Now let's do the same thing but with comparisons:
 
    %timeit pd.eval('df1 + df2 + df3 + df4 + s')
 
-There are also two different flavors of parsers and and two different engines
-to use as the backend.
+The ``DataFrame.eval`` method
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In addition to the top level :func:`~pandas.eval` function you can also
+evaluate an expression in the "context" of a ``DataFrame``.
+
+
+.. ipython:: python
+
+   df = DataFrame(randn(10, 2), columns=['a', 'b'])
+   df.eval('a + b')
+
+
+Any expression that is a valid :func:`~pandas.eval` expression is also a valid
+``DataFrame.eval`` expression, with the added benefit that *you don't have to
+prefix the name of the* ``DataFrame`` *to the column you're interested in
+evaluating*.
+
+
+Local Variables
+~~~~~~~~~~~~~~~
+
+You can refer to local variables the same way you would in vanilla Python
+
+.. ipython:: python
+
+   df = DataFrame(randn(10, 2), columns=['a', 'b'])
+   newcol = randn(len(df))
+   df.eval('b + newcol')
+
+.. note::
+
+   The one exception is when you have a local (or global) with the same name as
+   a column in the ``DataFrame``
+
+    .. ipython:: python
+       :okexcept:
+
+       df = DataFrame(randn(10, 2), columns=['a', 'b'])
+       a = randn(len(df))
+       df.eval('a + b')
+
+   To deal with these conflicts, a special syntax exists for referring
+   variables with the same name as a column
+
+    .. ipython:: python
+
+       df.eval('@a + b')
+
+   The same is true for :meth:`~pandas.DataFrame.query` and
+   :meth:`~pandas.DataFrame.__getitem__` passed an expression:
+
+    .. ipython:: python
+       :suppress:
+
+       df.query('@a < b')
+       df['@a < b']
+
+    .. ipython:: python
+       :suppress:
+
+       del a
+
 
 :func:`~pandas.eval` Parsers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The default ``"pandas"`` parser allows a more intuitive syntax for expressing
+There are two different parsers and and two different engines you can use as
+the backend.
+
+The default ``'pandas'`` parser allows a more intuitive syntax for expressing
 query-like operations (comparisons, conjunctions and disjunctions). In
 particular, the precedence of the ``&`` and ``|`` operators is made equal to
 the precedence of the corresponding boolean operations ``and`` and ``or``.
@@ -413,7 +472,8 @@ semantics.
    np.all(x == y)
 
 
-The same expression can be "anded" with the word :keyword:`and` as well:
+The same expression can be "anded" together with the word :keyword:`and` as
+well:
 
 .. ipython:: python
 
@@ -424,6 +484,10 @@ The same expression can be "anded" with the word :keyword:`and` as well:
    np.all(x == y)
 
 
+The ``and`` and ``or`` operators here have the same precedence that they would
+in vanilla Python.
+
+
 :func:`~pandas.eval` Backends
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -432,11 +496,9 @@ ol' Python.
 
 .. note::
 
-   Using the ``'python'`` engine is generally *not* useful, except for
-   comparing performance and testing other
-   :func:`~pandas.eval` engines against it. You will acheive
-   **no** performance benefits using :func:`~pandas.eval` with
-   ``engine='python'``.
+   Using the ``'python'`` engine is generally *not* useful, except for testing
+   other :func:`~pandas.eval` engines against it. You will acheive **no**
+   performance benefits using :func:`~pandas.eval` with ``engine='python'``.
 
 You can see this by using :func:`~pandas.eval` with the ``'python'`` engine is
 actually a bit slower (not by much) than evaluating the same expression in
